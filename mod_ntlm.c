@@ -1,25 +1,25 @@
-/* 
+/*
  * mod_ntlm.c: NTLM authentication module for Apache/Unix
  * Version 0.2
- * 
+ *
  *     "This product includes software developed by the Apache Group
  *     for use in the Apache HTTP server project (http://www.apache.org/)."
- * 
- * Based on 
+ *
+ * Based on
  * mod_ntlm.c for Win32 by Tim Costello <tim.costello@bigfoot.com>
  * pam_smb by Dave Airlie <Dave.Airlie@ul.ie>
  *
  * This code is copyright 2000 Andreas Gal <agal@uwsp.edu>.
  * Visit http://modntlm.sourceforge.net/ for code updates.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED ``AS IS`` AND ANY EXPRESSED OR IMPLIED
- * WARRANTIES ARE DISCLAIMED. 
- * 
+ * WARRANTIES ARE DISCLAIMED.
+ *
  * This code may be freely distributed, as long the above notices are
  * reproduced.
  *
  *  $Id: mod_ntlm.c,v 0.2 Apache 2.x 2004/03/08 09:44:02 mc Exp $
- *  
+ *
  */
 
 #define VERSION "mod_ntlm2-0.2"
@@ -54,7 +54,7 @@
 #include "smbval/valid.h"
 #include <stdarg.h>
 
-/* We exclude SOLARIS here also because for some reason unixd_set_global_mutex_perms hangs 
+/* We exclude SOLARIS here also because for some reason unixd_set_global_mutex_perms hangs
 ** if the process is started by root */
 #if !defined(OS2) && !defined(WIN32) && !defined(BEOS)  && !defined(NETWARE) && !defined(SOLARIS2)
 #include "unixd.h"
@@ -82,10 +82,10 @@ static void slog(int level, const char *format,...) {
 	va_list ap;
 	char* s;
 	int iLen;
-	
+
     if ((s = (char *) malloc(2048)) == NULL)
         return;
-	
+
 	iLen = sprintf(s, "%u - ", (unsigned) getpid());
     va_start(ap, format);
     vsprintf(s + iLen, format, ap);
@@ -189,7 +189,7 @@ static int initialize_module(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
 	/* initialize_module() will be called twice, and if it's a DSO
 	** then all static data from the first call will be lost. Only
 	** set up our static data on the second call. */
-		
+
 	if(pServer == NULL) pServer = s;
 	apr_pool_userdata_get(&data, userdata_key, s->process->pool);
 	if (!data) {
@@ -237,7 +237,7 @@ static void initialize_child(apr_pool_t *p, server_rec *s) {
 	return;
 }
 
-static void * 
+static void *
 create_ntlm_dir_config( apr_pool_t *p, char *d)
 {
     ntlm_config_rec *crec = (ntlm_config_rec *) apr_pcalloc(p, sizeof(ntlm_config_rec));
@@ -308,7 +308,7 @@ static const unsigned char pr2six[256] =
 static const char basis_64[]
     = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-/* 
+/*
  * UUENCODE / DECODE routines below taken from apache source code
  */
 static void *
@@ -451,11 +451,11 @@ static ntlm_connection_rec* get_ntlm_connection(conn_rec* c) {
 	char key[20];
 	ntlm_connection_rec* ntlm_connection;
 	sprintf(key, "%u", c->id);
-	apr_pool_userdata_get((void**) &ntlm_connection, key, c->pool); 
+	apr_pool_userdata_get((void**) &ntlm_connection, key, c->pool);
 	return ntlm_connection;
 }
 
-static apr_status_t 
+static apr_status_t
 cleanup_ntlm_connection(void *conn)
 {
 	ntlm_connection_rec* ntlm_connection;
@@ -469,7 +469,7 @@ cleanup_ntlm_connection(void *conn)
     return APR_SUCCESS; // csz
 }
 
-static void 
+static void
 note_ntlm_auth_failure(request_rec * r)
 {
     ntlm_config_rec *crec = (ntlm_config_rec *) ap_get_module_config(r->per_dir_config, &ntlm_module);
@@ -484,7 +484,7 @@ note_ntlm_auth_failure(request_rec * r)
     }
 }
 
-static void 
+static void
 log_ntlm_logon_denied(request_rec * r)
 {
     log(r, APLOG_ERR, "NTLM/SMB user \"%s\": authentication failure for \"%s\"", r->user, r->uri);
@@ -518,7 +518,7 @@ get_ntlm_header(request_rec * r, ntlm_config_rec * crec)
     msg = uudecode_binary(r->connection->pool, auth_line, &len);
     ntlmssp = apr_pcalloc(r->pool, sizeof(ntlmssp_info_rec));
     if ((foo = ntlm_decode_msg(r, ntlmssp, msg, len,&ntlmssp_flags)) != 0) {
-        log(r,  APLOG_NOERRNO | APLOG_ERR, 
+        log(r,  APLOG_NOERRNO | APLOG_ERR,
                       "ntlm_decode_msg failed: type: %d, host: \"%s\", "
                       "user: \"%s\", domain: \"%s\", error: %d",
                       ntlmssp->msg_type,
@@ -535,7 +535,7 @@ get_ntlm_header(request_rec * r, ntlm_config_rec * crec)
     return ntlmssp;
 }
 
-static int 
+static int
 send_ntlm_challenge(request_rec * r, ntlm_config_rec * crec, int win9x)
 {
     struct ntlm_msg2 msg;
@@ -568,7 +568,7 @@ send_ntlm_challenge(request_rec * r, ntlm_config_rec * crec, int win9x)
 	    challenge = uuencode_binary(r->pool, (unsigned char *)&msg_win9x,l);
 	}
 
-	/* This is to make sure that when receiving msg3 that the r->connection is still alive  
+	/* This is to make sure that when receiving msg3 that the r->connection is still alive
 	 * after sending the nonce to the client
 	 */
 	if(r->connection->keepalives >= r->server->keep_alive_max) {
@@ -582,7 +582,7 @@ send_ntlm_challenge(request_rec * r, ntlm_config_rec * crec, int win9x)
     return HTTP_UNAUTHORIZED;
 }
 
-static int 
+static int
 ntlm_check_response(request_rec * r, ntlm_config_rec * crec,
                     ntlmssp_info_rec * ntlmssp)
 {
@@ -598,8 +598,7 @@ ntlm_check_response(request_rec * r, ntlm_config_rec * crec,
 	if (ntlm_connection->auth_ok && ntlm_connection->user) {
  	  /* user has already valid credentials */
  		if ((!strcmp(ntlm_connection->user, ntlmssp->user))
-            && (!strcmp(ntlm_connection->domain, ntlmssp->domain))
-            && (!memcmp(ntlm_connection->password, ntlmssp->nt, RESP_LEN))) {
+            && (!strcmp(ntlm_connection->domain, ntlmssp->domain))) {
 			log(r, APLOG_INFO, "silent reauthentication");
             /* silently accept login with same credentials */
 			r->user = apr_pstrdup(r->connection->pool, ntlm_connection->user);
@@ -653,8 +652,8 @@ ntlm_check_response(request_rec * r, ntlm_config_rec * crec,
 	return OK;
 }
 
-/* rit, 9.10.00 
-*       code from mod_auth.c 
+/* rit, 9.10.00
+*       code from mod_auth.c
 */
 static apr_table_t *groups_for_user(apr_pool_t *p, char *user, char *grpfile)
 {
@@ -701,7 +700,7 @@ static apr_table_t *groups_for_user(apr_pool_t *p, char *user, char *grpfile)
 /* SHH 2000-05-10: added the following method by copying from several
  * places (this file and apache sources).  very little is my own work.
  * *sigh*; i've become a thief on my older days. */
-static int 
+static int
 authenticate_basic_user(request_rec * r, ntlm_config_rec * crec,
                         const char *auth_line_after_Basic)
 {
@@ -760,7 +759,7 @@ authenticate_basic_user(request_rec * r, ntlm_config_rec * crec,
     return OK;
 }
 
-static int 
+static int
 authenticate_ntlm_user(request_rec * r, ntlm_config_rec * crec)
 {
     ntlmssp_info_rec *ntlmssp;
@@ -782,7 +781,7 @@ authenticate_ntlm_user(request_rec * r, ntlm_config_rec * crec)
         log(r, APLOG_INFO, "NTLMXX-Creating new ntlm_connection: %s", key);
 		apr_pool_userdata_set(ntlm_connection, key, NULL, r->connection->pool);
     }
-	apr_thread_mutex_unlock(crec->ntlm_mutex); 
+	apr_thread_mutex_unlock(crec->ntlm_mutex);
     if ((ntlmssp = get_ntlm_header(r, crec)) == NULL) {
         note_ntlm_auth_failure(r);
         log(r, APLOG_NOERRNO | APLOG_ERR, "missing/corrupt NTLM header");
@@ -800,7 +799,7 @@ authenticate_ntlm_user(request_rec * r, ntlm_config_rec * crec)
     return HTTP_BAD_REQUEST;
 }
 
-static int 
+static int
 authenticate_user(request_rec * r)
 {
     ntlm_config_rec *crec = (ntlm_config_rec *) ap_get_module_config(r->per_dir_config, &ntlm_module);
@@ -812,13 +811,13 @@ authenticate_user(request_rec * r)
         note_ntlm_auth_failure(r);
         return HTTP_UNAUTHORIZED;
     }
-    if (crec->ntlm_basic_on && strcasecmp(ap_getword(r->pool, &auth_line, ' '), "Basic") == 0) 
+    if (crec->ntlm_basic_on && strcasecmp(ap_getword(r->pool, &auth_line, ' '), "Basic") == 0)
         return authenticate_basic_user(r, crec, auth_line);
 
     return authenticate_ntlm_user(r, crec);
 }
 
-static int 
+static int
 check_user_access(request_rec * r)
 {
 	ntlm_connection_rec* ntlm_connection;
@@ -836,8 +835,8 @@ check_user_access(request_rec * r)
     require_line *reqs;
 	ntlm_connection = get_ntlm_connection(r->connection);
 
-    /* 
-     * If the switch isn't on, don't bother. 
+    /*
+     * If the switch isn't on, don't bother.
      */
     if (!crec->ntlm_on) {
         return DECLINED;
@@ -849,7 +848,7 @@ check_user_access(request_rec * r)
 
     reqs = (require_line *) reqs_arr->elts;
 
-    /* 
+    /*
      * Did we authenticate this user?
      * If not, we don't want to do user/group checking.
      */
@@ -914,13 +913,13 @@ check_user_access(request_rec * r)
     if (!(crec->ntlm_authoritative)) {
         return DECLINED;
     }
-    log(r, APLOG_ERR, 
+    log(r, APLOG_ERR,
                   "access to \"%s\" failed, reason: "
                   "user \"%s\" not allowed access.",
                   r->uri, user);
 
     note_ntlm_auth_failure(r);
-    /* 
+    /*
      * We return HTTP_UNAUTHORIZED (401) because the client may wish
      * to authenticate using a different scheme, or a different
      * username. If this works, they can be granted access. If we
